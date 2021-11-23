@@ -22,6 +22,7 @@ import subprocess
 #import httplib, urllib
 #from StringIO import StringIO
 
+#####################################################################################
 ### identify continuous stretches from a list of numbers 
 ### join stretches if they closer than "win" length
 ### input is a list
@@ -66,10 +67,130 @@ def continuous(seglist, win):
 def bool2ind(predicted, b=True):
     return np.where( np.array(predicted) == b)[0].tolist()    
 
+### returns index of A which are present in B
+def ismember(A, B):
+    AinB = [x for x in A if x in B]
+    AinBi = [i for i, x in enumerate(A) if x in AinB]
+	return AinBi
+
+
+############################################################################################
+#### 'common amino acid residue values '
+AAlist = list("GAVLIMFWPSTCYNQDEKRH")
+hphoAAlist = list("GAVLIMFWP") #[ "G", "A", "V", "L", "I", "M", "F", "W", "P" ]
+hphiAAlist = list("STCYNQDEKRH")
+
+aa1code = ['A', 'D', 'C', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
+aapair = np.array([ [y+x for x in aa1code] for y in aa1code]).flatten()
+aaA2AAA = {'A' :'ALA', 'C':'CYS', 'D':'ASP', 'E':'GLU', 'F':'PHE', 'G':'GLY', 'H':'HIS', 'I':'ILE', 'K':'LYS', 'L':'LEU', 'M':'MET', 'N':'ASN', 'P':'PRO', 'Q':'GLN', 'R':'ARG', 'S':'SER', 'T':'THR', 'V': 'VAL', 'W' : 'TRP', 'Y' : 'TYR', 'X': 'UNK' } #, 'B': 'MSE', 'J' : 'PCA', 'O': 'SL5', 'J': 'SWG'
+aaAAA2A = {'ALA':'A', 'CYS':'C', 'ASP' : 'D',  'GLU' : 'E' , 'PHE' : 'F', 'GLY' : 'G', 'HIS' : 'H', 'ILE' : 'I', 'LYS': 'K' , 'LEU':'L', 'MET':'M' , 'ASN':'N', 'PRO':'P' , 'GLN':'Q' , 'ARG':'R' , 'SER':'S' , 'THR':'T', 'VAL':'V', 'TRP':'W', 'TYR':'Y', 'UNK' :'X'} #, 'MSE':'B', 'PCA' : 'B', 'SL5' : 'B', 'SWG' : 'B' , 'TPO' : 'B', 'MIR' : 'B', 'PTR' : 'B', 'PIA' : 'B', 'CRF' : 'B', 'CZZ' : 'B'  
+
+aa2chph74 = {'A' :0, 'C':0, 'D':-1, 'E':-1, 'F':0, 'G':0, 'H':0.5, 'I':0, 'K':1, 'L':0, 'M':0, 'N':0, 'P':0, 'Q':0, 'R':1, 'S':0, 'T':0, 'V':0, 'W' : 0, 'Y' :0, 'X':0} 
+aa2chph26 = {'A' :0, 'C':0, 'D':0, 'E':0, 'F':0, 'G':0, 'H':1, 'I':0, 'K':1, 'L':0, 'M':0, 'N':0, 'P':0, 'Q':0, 'R':1, 'S':0, 'T':0, 'V':0, 'W' : 0, 'Y' :0, 'X':0} 
+
+dssp2ss1 = {'H':'H', 'G':'H', 'I':'H', 'E':'E', 'B':'E', 'S':'T', 'T':'T', '':'C'}
+dssp2ss2 = {'H':'H', 'G':'H', 'I':'H', 'E':'E', 'B':'E', 'S':'C', 'T':'C', '':'C'}
+aa3code = ['ALA', 'ASP', 'CYS', 'GLU', 'PHE', 'GLY', 'HIS', 'ILE', 'LYS', 'LEU', 'MET', 'ASN', 'PRO', 'GLN', 'ARG', 'SER', 'THR', 'VAL', 'TRP', 'TYR']
+aa1code = ['A', 'D', 'C', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
+aatASA = [110.2, 144.1, 140.4, 174.7, 200.7, 78.7, 181.9, 185, 205.7, 183.1, 200.1, 146.4, 141.9, 178.6, 229, 117.2, 138.7, 153.7, 240.5, 213.7];
+aaShphobic = [0.81, 0.88, 0.72, 0.46, 0.95, 0.77, 0.54, 1, 0.26, 0.92, 0.81, 0.45, 0.68, 0.43, 0, 0.6, 0.63, 0.92, 0.85, 0.71] 
+aaShphobic_c = [x-0.77 for x in aaShphobic]
+aa3toaa1 = { a:[b,c,d] for a,b,c,d in zip(aa3code,aa1code,aatASA,aaShphobic)}
+stride2ss = {'H':'H', 'E':'E', 'T':'C', 'C':'C', 'G':'H', 'I':'H', 'b':'E', 'B':'E'} 
+aaA2tASA = dict(zip(aa1code, aatASA)) 
+aaA2hpo = dict(zip(aa1code, aaShphobic))       
+aaA2hpo_c = dict(zip(aa1code, aaShphobic_c))      
+
+def aminoA2tASA(aa):
+	try:
+        	return aaA2tASA[aa]
+	except:
+        	return 0
+        	
+def aminoA2hpo(aa):
+	try:
+        	return aaA2hpo[aa]
+	except:
+        	return 0
+
+def aminoA2hpo_c(aa):
+	try:
+        	return aaA2hpo_c[aa]
+	except:
+        	return 0
+
+def aminoAAA2A(res):
+	try:
+		return aaAAA2A[res]
+	except:
+		return 'B'
+
+def aminoA2AAA(res):
+	try:
+		return aaA2AAA[res]
+	except:
+		return 'NSA'
+
+def aminoA2chph74(res):
+	try:
+		return aa2chph74[res]
+	except:
+		return 0
+
+def aminoA2chph26(res):
+	try:
+		return aa2chph26[res]
+	except:
+		return 0
+				
+aminoAAA2A = np.vectorize(aminoAAA2A)
+aminoA2AAA = np.vectorize(aminoA2AAA)
+aminoA2hpo = np.vectorize(aminoA2hpo)
+aminoA2hpo_c = np.vectorize(aminoA2hpo_c)
+aminoA2tASA = np.vectorize(aminoA2tASA)
+aminoA2chph74 = np.vectorize(aminoA2chph74)
+aminoA2chph26 = np.vectorize(aminoA2chph26)
+
+###########################################################################################
 
 
 
 
+###########################################################################3333############ 
+### 'Multiple liner Regression' - sample code
+### 'X and Y must be np.array'
+alpha = 0.05 ; ndigits = 3
+def mlregress(X, Y):
+#	Y = np.matrix(data_array[:,0]).T
+#	X = np.matrix(data_array[:, vvlist])
+	n = np.shape(X) ; p = n[1]+1 ; n = n[0]
+	## Multiple Regression
+	X = np.append(X, np.ones(np.shape(Y)), axis=1)
+	XT = X.T
+	if np.linalg.det(XT * X) == 0:
+		text = str(k) + '\t{' + ','.join([Header[x] for x in vvlist]) + '}\t' + '## Error: determinant Zero ##'  + '\t' +  ' '  + '\t' +  ' ' + '\t' +  ' '  + '\t' +   ' ' + '\t' +  ' '+ '\t' +  ' ' + '\n'
+		print(text); f.write(text) ;
+		return -1
+		
+	XX = (XT * X).I
+	B = XX * XT * Y
+	Yp = X * B
+	## Metrics
+	B = list(B.getA1())
+	SSE = np.sum(np.power(Y - Yp, 2))
+	sig2 = SSE/(n-p);		covB = sig2 * XX;
+	SST = np.sum(np.power(Y - np.sum(Y)/n, 2));		SSR = SST - SSE;
+	out.R2 = 1 - SSE/SST ;		out.R = pow(R2, 0.5)
+
+	## Stats
+	out.tcal = [B[i]/pow(sig2 * covB[i,i], 0.5)  for i in range(len(B))]
+	out.talpha = scipy.stats.t.ppf(1-alpha/2.0, n-p)
+	out.Brange = [ str( round(B[i] - out.talpha * pow(covB[i,i], 0.5), ndigits))+'-'+str(round(B[i] + out.talpha * pow(covB[i,i], 0.5),ndigits)) for i in range(len(B)) ] 
+	#Or whatever you want your alpha to be.
+	out.Fp_value = 2 * min(scipy.stats.f.cdf(SSR/SSE, p-1, n-p), scipy.stats.f.sf(SSR/SSE, p-1, n-p))
+	return out
+
+######################################################################################
 
 ### Segment overlap score - SOV 
 ### not generalized functions
