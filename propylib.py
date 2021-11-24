@@ -81,22 +81,25 @@ hphoAAlist = list("GAVLIMFWP") #[ "G", "A", "V", "L", "I", "M", "F", "W", "P" ]
 hphiAAlist = list("STCYNQDEKRH")
 
 aa1code = ['A', 'D', 'C', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
+aa3code = ['ALA', 'ASP', 'CYS', 'GLU', 'PHE', 'GLY', 'HIS', 'ILE', 'LYS', 'LEU', 'MET', 'ASN', 'PRO', 'GLN', 'ARG', 'SER', 'THR', 'VAL', 'TRP', 'TYR']
+#aa1code = ['A', 'D', 'C', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
 aapair = np.array([ [y+x for x in aa1code] for y in aa1code]).flatten()
+
 aaA2AAA = {'A' :'ALA', 'C':'CYS', 'D':'ASP', 'E':'GLU', 'F':'PHE', 'G':'GLY', 'H':'HIS', 'I':'ILE', 'K':'LYS', 'L':'LEU', 'M':'MET', 'N':'ASN', 'P':'PRO', 'Q':'GLN', 'R':'ARG', 'S':'SER', 'T':'THR', 'V': 'VAL', 'W' : 'TRP', 'Y' : 'TYR', 'X': 'UNK' } #, 'B': 'MSE', 'J' : 'PCA', 'O': 'SL5', 'J': 'SWG'
 aaAAA2A = {'ALA':'A', 'CYS':'C', 'ASP' : 'D',  'GLU' : 'E' , 'PHE' : 'F', 'GLY' : 'G', 'HIS' : 'H', 'ILE' : 'I', 'LYS': 'K' , 'LEU':'L', 'MET':'M' , 'ASN':'N', 'PRO':'P' , 'GLN':'Q' , 'ARG':'R' , 'SER':'S' , 'THR':'T', 'VAL':'V', 'TRP':'W', 'TYR':'Y', 'UNK' :'X'} #, 'MSE':'B', 'PCA' : 'B', 'SL5' : 'B', 'SWG' : 'B' , 'TPO' : 'B', 'MIR' : 'B', 'PTR' : 'B', 'PIA' : 'B', 'CRF' : 'B', 'CZZ' : 'B'  
 
 aa2chph74 = {'A' :0, 'C':0, 'D':-1, 'E':-1, 'F':0, 'G':0, 'H':0.5, 'I':0, 'K':1, 'L':0, 'M':0, 'N':0, 'P':0, 'Q':0, 'R':1, 'S':0, 'T':0, 'V':0, 'W' : 0, 'Y' :0, 'X':0} 
 aa2chph26 = {'A' :0, 'C':0, 'D':0, 'E':0, 'F':0, 'G':0, 'H':1, 'I':0, 'K':1, 'L':0, 'M':0, 'N':0, 'P':0, 'Q':0, 'R':1, 'S':0, 'T':0, 'V':0, 'W' : 0, 'Y' :0, 'X':0} 
 
+## simplify DSSP/STRIDE secstr code
 dssp2ss1 = {'H':'H', 'G':'H', 'I':'H', 'E':'E', 'B':'E', 'S':'T', 'T':'T', '':'C'}
 dssp2ss2 = {'H':'H', 'G':'H', 'I':'H', 'E':'E', 'B':'E', 'S':'C', 'T':'C', '':'C'}
-aa3code = ['ALA', 'ASP', 'CYS', 'GLU', 'PHE', 'GLY', 'HIS', 'ILE', 'LYS', 'LEU', 'MET', 'ASN', 'PRO', 'GLN', 'ARG', 'SER', 'THR', 'VAL', 'TRP', 'TYR']
-aa1code = ['A', 'D', 'C', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
+stride2ss = {'H':'H', 'E':'E', 'T':'C', 'C':'C', 'G':'H', 'I':'H', 'b':'E', 'B':'E'} 
+
 aatASA = [110.2, 144.1, 140.4, 174.7, 200.7, 78.7, 181.9, 185, 205.7, 183.1, 200.1, 146.4, 141.9, 178.6, 229, 117.2, 138.7, 153.7, 240.5, 213.7];
 aaShphobic = [0.81, 0.88, 0.72, 0.46, 0.95, 0.77, 0.54, 1, 0.26, 0.92, 0.81, 0.45, 0.68, 0.43, 0, 0.6, 0.63, 0.92, 0.85, 0.71] 
 aaShphobic_c = [x-0.77 for x in aaShphobic]
 aa3toaa1 = { a:[b,c,d] for a,b,c,d in zip(aa3code,aa1code,aatASA,aaShphobic)}
-stride2ss = {'H':'H', 'E':'E', 'T':'C', 'C':'C', 'G':'H', 'I':'H', 'b':'E', 'B':'E'} 
 aaA2tASA = dict(zip(aa1code, aatASA)) 
 aaA2hpo = dict(zip(aa1code, aaShphobic))       
 aaA2hpo_c = dict(zip(aa1code, aaShphobic_c))      
@@ -155,7 +158,8 @@ aminoA2chph26 = np.vectorize(aminoA2chph26)
 
 
 
-
+###########################################################################################
+#### Experimental
 ###########################################################################3333############ 
 ### 'Multiple liner Regression' - sample code
 ### 'X and Y must be np.array'
