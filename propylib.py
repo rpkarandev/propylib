@@ -1415,7 +1415,312 @@ class PDB2:
 #			contactfile.write ('\n')
 	
 		return cont_dist,cont_bin
+
     
+class PDB2:
+	'Class for storing PDB data'
+	def __init__(self, filename, modelno=0, chainid=''):
+		self.fname = ((filename.split('/'))[-1].split('.'))[0]
+		if len(chainid) == 1 :
+			chainid2 = ''.join([' ',chainid])
+		self.missingres_seqno = [] 
+		self.chains={}
+		self.resnos = []
+		self.resnames = []
+		self.resnames1 = []
+
+		self.atom = atomgrp()
+		self.hetatom = atomgrp()
+
+		self.indCalpha = []
+		self.indBB = []
+		self.indnH = []
+		self.res_many_occurence = []
+		modelflag = False
+		with open(filename, 'r') as pdbfile :
+			line = pdbfile.readline()
+			if chainid == '' :
+				while line :
+	## Read Missing residues			
+					if line[:27] == 'REMARK 465   M RES C SSSEQI':
+						line = pdbfile.readline()
+						while line[:10] == 'REMARK 465' :
+							temp = line[21:26].strip()						
+							self.missingres_seqno.append(int(temp))							
+							line = pdbfile.readline()## Read seqres				
+	## Read SeqRes				
+					while line[:6] == 'SEQRES':	
+						if line[10:12].strip() in self.chains.keys() : 
+							self.chains[line[10:12].strip()]  = self.chains[line[10:12].strip()] + line[19:80].split()
+						else :
+							self.chains[line[10:12].strip()] = line[19:80].split()
+							#print(line[10:12].strip())		
+							#print(line		)
+						line = pdbfile.readline()
+					if line[:5] == 'MODEL':
+						modelflag = True 
+					if modelflag and line[:6] == 'ENDMDL' :
+						break 					 
+	## Read atom coordinates					
+					if line[:6] == 'ATOM  ':
+						self.atom.add([int(line[6:11].strip()), line[12:16].strip(), line[16:20].strip(), line[20:22].strip(), int(line[22:26].strip()), [float(line[30:38].strip()), float(line[38:46].strip()), float(line[46:54].strip())], float(line[54:62].strip()), float(line[62:68].strip()), line[76:78].strip() ]  ) 
+								
+	## Read hetatom coordinates
+				#	if line[:6] == 'HEATOM':
+				#		self.hetatom.add([int(line[6:11].strip()), line[12:16].strip(), line[17:20].strip(), line[21:22].strip(), int(line[22:26].strip()), [float(line[30:38].strip()), float(line[38:46].strip()), float(line[46:54].strip())], float(line[54:60].strip()), float(line[60:66].strip()), line[76:78].strip() ] )						
+
+					line = pdbfile.readline()
+			else:
+				while line :			
+					if line[:27] == 'REMARK 465   M RES C SSSEQI':
+						line = pdbfile.readline()
+						while line[:10] == 'REMARK 465' and line[18:20] == chainid2:
+							temp = line[21:26].strip()						
+							self.missingres_seqno.append(int(temp))							
+							line = pdbfile.readline()## Read seqres				
+	
+					while line[:6] == 'SEQRES':	
+						if line[10:12].strip() in self.chains.keys() : 
+#							self.chains[line[10:12].strip()].append(line[19:80].split()) 
+							self.chains[line[10:12].strip()]  = self.chains[line[10:12].strip()] + line[19:80].split()
+						elif line[10:12] == chainid2:
+							self.chains[line[10:12].strip()] = line[19:80].split()				
+						line = pdbfile.readline()
+                        
+					if line[:5] == 'MODEL':
+						modelflag = True 
+					if modelflag and line[:6] == 'ENDMDL' :
+						break                     
+					if line[:6] == 'ATOM  ' and line[20:22] == chainid2 :						
+						self.atom.add([int(line[6:11].strip()), line[12:16].strip(), line[17:20].strip(), line[20:22].strip(), int(line[22:26].strip()), [float(line[30:38].strip()), float(line[38:46].strip()), float(line[46:54].strip())], float(line[54:60].strip()), float(line[60:66].strip()), line[76:78].strip() ]  ) 
+
+					if line[:6] == 'HEATOM':
+						self.hetatom.add([int(line[6:11].strip()), line[12:16].strip(), line[17:20].strip(), line[20:22].strip(), int(line[22:26].strip()), [float(line[30:38].strip()), float(line[38:46].strip()), float(line[46:54].strip())], float(line[54:60].strip()), float(line[60:66].strip()), line[76:78].strip() ] )						
+					line = pdbfile.readline()
+				
+		#self.atom.coords.data = self.atom.coords.data[1:,:]
+		temp0 = [[ x for x in range(len(self.atom.atomname)) if (self.atom.atomname[x] == 'CA') and (self.atom.chain[x] == y)] for y in self.chains]	
+		## removing multiple occuring residues - choose first one
+		for chainx in temp0:			
+			temp1 = [ self.atom.resno[y] for y in chainx ]
+			temp3 = {}
+			for rsi in range(len(temp1)) :
+				resno = temp1[rsi]		
+				if resno in temp3.keys():
+					self.res_many_occurence.append(resno)
+				else:
+					temp3[resno] = chainx[rsi]
+			self.indCalpha.append(list(temp3.values()))
+		
+		self.resnos = [ [ self.atom.resno[y] for y in x ] for x in self.indCalpha]
+		self.resnames = [ [ self.atom.resname[y] for y in x ] for x in self.indCalpha]
+		self.resnames1 = [ [ aminoAAA2A(y) for y in x ] for x in self.resnames]
+		self.indBB = [[x for x in range(len(self.atom.atomname)) if (self.atom.atomname[x] == 'N') or (self.atom.atomname[x] == 'CA') or (self.atom.atomname[x] == 'C')] for y in self.chains]	
+		self.indnH = [[x for x in range(len(self.atom.atomname)) if (self.atom.atomname[x] != 'H') or (self.atom.atomname[x] != 'D') ] for y in self.chains]	
+#		print(self.chains)
+#		print(self.resnos)
+#		print(self.resnames)		
+	'writes PDB seqres in fasta format'
+	'Appends to the file given'
+	def fasta(self, fname, ch='', mode='w'):
+		with open(fname, mode) as fid :
+			if ch == '' :				
+				chs = list(self.chains.keys())
+			else:
+				chs = [ch]
+			for ch in chs:
+				try:
+					seq = ''.join([aminoAAA2A(y) for y in self.chains[ch]])
+					fid.write(">%s_%s_%d\n%s\n" % (self.fname,ch,len(seq),seq) )
+				except:
+					print('Couldn\'t fetch the sequence of the chain: ' + ch)				
+		return len(chs)
+
+	'Calculates all the dihedral angles in the PDB and returns n x 3 np.array for each chain in list'
+	' tested with dssp results . ... perfect :-)'
+	def dihedralangles( self, ch=''):
+		dihanglestotal = []; chs0 = [x for x in self.chains.keys()]
+		if ch == '' :				
+			chs = chs0
+		else:
+			chs = [ch]
+		for ch in chs:
+			chno = ([x for x in range(len(chs0)) if chs0[x] == ch ])[0]
+			chno = ([x for x in range(len(chs0)) if chs0[x] == ch ])[0]
+			bbresno	= [self.atom.resno[x] for x in self.indBB[chno] ]
+			bbind = self.indBB[chno]
+			bbcoords = self.atom.coords.data[bbind, :]
+			bbatomname = [self.atom.atomname[x] for x in bbind]
+			allresnos = np.arange( min(self.resnos[chno]), max(self.resnos[chno])+1 )
+			dihangles = np.ones(( len(allresnos) ,3), dtype=np.float) * 360.0
+			#for i in allresnos:
+			#	bbcoords
+			for i in range(len(bbind)-3):
+				ri = [x for x in allresnos if x == bbresno[i+1] ]
+				patternresno = [ bbresno[i], bbresno[i+1], bbresno[i+2], bbresno[i+3] ]
+				patternresno = [x-min(patternresno) for x in patternresno]		
+				resnoorder =  sum([x == 1 for x in patternresno])
+				coords = bbcoords[i:i+4,:]
+				if (resnoorder == 1) and (bbatomname[i] == 'N') :
+					dihangles[ri, 1] = calcdihedral( coords )		
+				elif (resnoorder == 2) and (bbatomname[i] == 'CA') :
+					dihangles[ri, 2] = calcdihedral( coords )
+				elif (resnoorder == 3) and (bbatomname[i] == 'C') :
+					dihangles[ri, 0] = calcdihedral( coords )
+				#print(resnoorder, patternresno, coords)
+			dihanglestotal.append(dihangles)			
+		return dihanglestotal
+			# to be continued ...
+			
+	'Calculates distance from a residues to list of residue in a protein'
+	def resdistCA(self, ch1, ch2, res1, reslist2):
+		if type(reslist2) == int :		
+			reslist2 = [reslist2]
+		chno1 = [ x for x,y in enumerate(self.chains.keys()) if y == ch1 ]
+		chno2 = [ x for x,y in enumerate(self.chains.keys()) if y == ch2 ]		
+		if len(chno1) == 0 or len(chno2) == 0 :
+			print("resdistCA -> Error: chains not found in pdb")
+			return [], []
+		else:
+			chno1 = chno1[0]
+			chno2 = chno2[0]			
+		ind1 = [ x  for x in self.indCalpha[chno1] if self.atom.resno[x] == res1 ]		
+		reslist2 = [x for x in reslist2 if  x in self.resnos[chno2] ]
+		ind2 = [ x  for x in self.indCalpha[chno2] if self.atom.resno[x] in reslist2 ]
+		if len(ind1) == 0 or len(ind2) == 0 :
+			print("resdistCA -> Error: residues not found in pdb")
+			return [], []
+		else:
+			ind1 = ind1[0]
+		coord1 = self.atom.coords.data[ind1,:]		
+		coords2 = np.array([self.atom.coords.data[x,:] for x in ind2])		
+		resdist = np.sqrt(np.sum(np.power((coords2 - coord1),2),axis = 1))
+#		print(resdist, reslist2)
+		return resdist, reslist2
+
+	'Gives list( of indices) of all possible residue stretches of given length'
+	'c == 1, give the centre residues, t == 1, give coords instead of indicies, t == 2 gives resno'
+	def listresstretchesCA(self, ch='A', l=6, c=0, t=0):
+		ll = l - 1 ;
+		chno = [ x for x,y in enumerate(self.chains.keys()) if y == ch ][0]
+		cc = l/2 - 1
+		if c == 0 :		
+			indresstretchlist = [self.indCalpha[chno][ii:ii+l] for ii in range(len(self.indCalpha[chno])-ll) ]
+		else :
+			indresstretchlist = [self.indCalpha[chno][ii+cc] for ii in range(len(self.indCalpha[chno])-ll) ]			
+
+		if t == 0 :
+			return indresstretchlist 
+		elif t == 1:
+			return np.array([self.atom.coords.data[x,:] for x in indresstretchlist ])
+		elif t == 2:
+			return [self.atom.resno[x] for x in indresstretchlist ]
+		else :
+			return -1
+			
+	'calculates contact map between two chains'
+	def contactmapCA(self, filename, chain1, chain2):
+		if ((not chain1 in self.chains.keys()) and  (chain1 != -1)) or ((not chain2 in self.chains.keys()) and  (chain2 != -1)):			
+			print('Chain(s) were not found in the PDB') ;
+			return -1
+		if chain1 == chain2 :
+			if chain1 == -1 :
+				coords1 = self.atom.coords.data 
+				coords2 = coords1 				
+			else:
+				index1 =  [x==chain1 for x in self.atom.chain]
+				coords1 = self.atom.coords[(index1, [0, 1, 2])]
+				index2 =  [x==chain2 for x in self.atom.chain]
+				coords2 = self.atom.coords[(index2, [0, 1, 2])]
+		else:
+			if chain1 ==coord -1:
+				coords1 = self.atom.coords.data
+			else:
+				index1 =  [x==chain1 for x in self.atom.chain]
+				coords1 = self.atom.coords[(index1, [0, 1, 2])]
+			if chain2 == -1:
+				coords2 = self.atom.coords.data	
+			else:
+				index2 =  [x==chain2 for x in self.atom.chain]
+				coords2 = self.atom.coords[(index2, [0, 1, 2])]		
+		
+		size1 = np.shape(coords1)[0]
+		size2 = np.shape(coords2)[0]		
+		cont_dist = np.zeros((size1,size2))
+		cont_bin = np.zeros((size1,size2))
+		i = 0
+		for c1 in coords1:
+			cont_dist[i,:] = np.sqrt(np.sum(np.power((coords2 - c1),2),axis =1))
+			i = i+1
+		
+		res_number1 =  [self.atom.resno[x] for x in range(len(index1)) if index1[x] == True ] if 'index1' in locals() else self.atom.resno
+		res_number2 =  [self.atom.resno[x] for x in range(len(index2)) if index2[x] == True ] if 'index2' in locals() else self.atom.resno
+		
+		contactfile = open(filename,'w')
+		contactfile.write('\t'+'\t'.join([str(x) for x in res_number2])+'\n')
+		for i in range(size1):
+			contactfile.write(str(res_number1[i])+'\t')
+			for j in range(size2):
+				if cont_dist[i,j] > 6:
+					cont_bin[i,j] = 0
+				else:
+					cont_bin[i,j] = 1
+				contactfile.write (str(int(cont_bin[i,j]))+'\t')				
+			contactfile.write ('\n')
+		
+		print(cont_bin)
+#		plt.imshow(cont_bin[size1:1:-1,:], cmap=cm.hot)
+		plt.imshow(cont_bin)
+		plt.colorbar()
+		plt.show()		
+#		plt.set_xticklabels(res_number2)		
+		return cont_dist
+	'calculates contact map between two chains'
+	def contactmapCA1(self, chain, distcutoff):
+		if ((not chain in self.chains.keys()) and  (chain != -1)) :			
+			print('Chain(s) were not found in the PDB') ;
+			return -1
+		index = [(x==chain) and (y!='H') for x,y in zip(self.atom.chain,self.atom.atomtype)]
+		coords1 = self.atom.coords[(index, [0, 1, 2])]
+		coords2 = coords1        
+		resnum = self.atom.resno[index]
+		reslist = np.unique(resnum).tolist()
+		size1 = np.shape(coords1)[0]
+		size2 = np.shape(coords2)[0]		
+		cont_dist = np.zeros((size1,size2))
+		cont_bin = np.zeros((len(reslist),len(reslist)))
+		i = 0
+		for c1 in coords1:
+			cont_dist[i,:] = np.sqrt(np.sum(np.power((coords2 - c1),2),axis =1))
+			i = i+1
+		
+#		contactfile = open(filename,'w')
+#		contactfile.write('\t'+'\t'.join([str(x) for x in res_number2])+'\n')
+		for i in range(len(reslist)):
+#			contactfile.write(str(res_number1[i])+'\t')
+			ind1 = np.where(resnum==reslist[i])
+			for j in range(len(reslist)):
+			    ind2 = np.where(resnum==reslist[j])
+			    cont_bin[i,j] = np.sum(cont_dist[np.meshgrid( ind1, ind2)] <= distcutoff)
+			#	contactfile.write (str(int(cont_bin[i,j]))+'\t')				
+#			contactfile.write ('\n')
+	
+		return cont_dist,cont_bin
+    
+def write_pdb(a, filename, rows=[], mode='a'): #writes pdb based on atom records 
+#	try:
+	with open(filename, mode) as f:
+		if len(rows) == 0:
+			rows = np.arange( len(a.atomno))
+		for i in rows:
+			atomname = ' ' + a.atomname[i] if len(a.atomname[i]) < 4  else a.atomname[i]
+			line = 'ATOM  {0:>5d} {1:<4s}{2:1s}{3:>3s} {4:1s}{5:>4d}{6:1s}   {7:>8.3f}{8:>8.3f}{9:>8.3f}{10:>6.2f}{11:>6.2f}{12:<10s}{13:>2s}{14:>2.1f}'.format(a.atomno[i], atomname , '', a.resname[i], a.chain[i], a.resno[i], '', a.coords.data[i][0], a.coords.data[i][1], a.coords.data[i][2], a.occupancy[i], a.bfac[i], ' ', a.atomtype[i], 0)
+			line += '\n'
+			f.write(line)
+	return 1
+#	except:
+#		return -1            
+
 #########################################################################################################
 ### Machine learning related - use sklearn instead
 #########################################################################################################
